@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, TextInput, Button, Alert, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { config } from './config';
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post('http://192.168.1.14:3000/api/auth/login', {
+      const response = await axios.post(`${config.BASE_URL}/api/auth/login`, {
         email,
         password,
       });

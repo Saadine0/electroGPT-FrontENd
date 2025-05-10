@@ -8,7 +8,7 @@ const Admin = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://192.168.2.207:3000/api/auth/users'); // Update with your endpoint
+      const response = await axios.get(`${config.BASE_URL}/api/auth/users`); // Update with your endpoint
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
