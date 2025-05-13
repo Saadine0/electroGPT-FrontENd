@@ -9,18 +9,26 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from './config';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function UploadScreen({ navigation , route }) {
+const { width } = Dimensions.get('window');
+
+export default function UploadScreen({ navigation, route }) {
   const [image, setImage] = useState(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
-  const { repairId } = route.params; 
-  console.log(" route.params : ", route.params)
+  const { repairId } = route.params;
+  
   useEffect(() => {
     const fetchUserId = async () => {
       try {
@@ -28,7 +36,7 @@ export default function UploadScreen({ navigation , route }) {
         if (uid) {
           setUserId(uid);
         } else {
-          Alert.alert('Error', 'User ID not found. Please log in again.');
+          Alert.alert('Session Error', 'User ID not found. Please log in again.');
         }
       } catch (e) {
         console.error('Failed to load user ID:', e);
@@ -36,23 +44,26 @@ export default function UploadScreen({ navigation , route }) {
     };
 
     fetchUserId();
+    requestPermissions();
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to make this work!');
-      }
-    })();
-  }, []);
+  const requestPermissions = async () => {
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (libraryStatus !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'We need access to your photo library to upload images.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -64,14 +75,18 @@ export default function UploadScreen({ navigation , route }) {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera permissions to make this work!');
+      Alert.alert(
+        'Camera Permission',
+        'We need camera access to take photos.',
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
 
     let result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -81,12 +96,12 @@ export default function UploadScreen({ navigation , route }) {
 
   const submitForm = async () => {
     if (!image) {
-      Alert.alert('Error', 'Please select an image');
+      Alert.alert('Missing Image', 'Please select or take a photo first');
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a description');
+      Alert.alert('Missing Description', 'Please enter a description for this image');
       return;
     }
 
@@ -117,9 +132,9 @@ export default function UploadScreen({ navigation , route }) {
           'Content-Type': 'multipart/form-data',
         },
       });
-      console.log('Raw response:', response);
+      
       const result = await response.json();
-console.log("result: ",result)
+      
       if (response.ok) {
         setLoading(false);
         navigation.navigate('SuccessScreen');
@@ -128,142 +143,255 @@ console.log("result: ",result)
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Upload Failed', error.message || 'Something went wrong.');
+      Alert.alert(
+        'Upload Failed', 
+        'Could not upload your image. Please try again later.',
+        [{ text: 'OK', style: 'default' }]
+      );
       console.error('Error:', error);
     }
   };
 
   if (!userId) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6C63FF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Share Your Image</Text>
-
-      <View style={styles.imageContainer}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.imagePreview} />
-        ) : (
-          <View style={styles.placeholderImage}>
-            <Text style={styles.placeholderText}>No image selected</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Text style={styles.buttonText}>Select Image</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.button} onPress={takePicture}>
-          <Text style={styles.buttonText}>Take Photo</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.label}>Description:</Text>
-      <TextInput
-        style={styles.input}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="Enter a description..."
-        multiline
-      />
-
-      <TouchableOpacity
-        style={[styles.submitButton, (!image || !description.trim()) && styles.disabledButton]}
-        onPress={submitForm}
-        disabled={!image || !description.trim() || loading}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitButtonText}>Submit</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Share Photo</Text>
+            <View style={styles.placeholder} />
+          </View>
+
+          <View style={styles.imageContainer}>
+            {image ? (
+              <>
+                <Image source={{ uri: image }} style={styles.imagePreview} />
+                <TouchableOpacity 
+                  style={styles.changeImageButton}
+                  onPress={pickImage}
+                >
+                  <Text style={styles.changeImageText}>Change Image</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="image-outline" size={48} color="#A0A0A0" />
+                <Text style={styles.placeholderText}>No image selected</Text>
+              </View>
+            )}
+          </View>
+
+          {!image && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+                <Ionicons name="images-outline" size={22} color="#fff" />
+                <Text style={styles.buttonText}>Select Image</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.imageButton} onPress={takePicture}>
+                <Ionicons name="camera-outline" size={22} color="#fff" />
+                <Text style={styles.buttonText}>Take Photo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.formSection}>
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={styles.input}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="What's in this image?"
+              multiline
+              placeholderTextColor="#A0A0A0"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (!image || !description.trim() || loading) && styles.disabledButton
+            ]}
+            onPress={submitForm}
+            disabled={!image || !description.trim() || loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={20} color="#fff" style={styles.submitIcon} />
+                <Text style={styles.submitButtonText}>Upload Image</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#fff',
     padding: 20,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 25,
+    paddingVertical: 5,
+  },
+  backButton: {
+    padding: 8,
+  },
+  placeholder: {
+    width: 40,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
   },
   imageContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   imagePreview: {
-    width: 250,
-    height: 250,
-    borderRadius: 10,
+    width: width * 0.85,
+    height: width * 0.65,
+    borderRadius: 12,
   },
-  placeholderImage: {
-    width: 250,
-    height: 250,
-    borderRadius: 10,
-    backgroundColor: '#e1e4e8',
+  imagePlaceholder: {
+    width: width * 0.85,
+    height: width * 0.65,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F7',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderStyle: 'dashed',
   },
   placeholderText: {
-    color: '#666',
+    marginTop: 12,
+    color: '#A0A0A0',
+    fontSize: 15,
   },
-  buttonRow: {
+  changeImageButton: {
+    marginTop: 12,
+    padding: 10,
+  },
+  changeImageText: {
+    color: '#6C63FF',
+    fontWeight: '500',
+  },
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  button: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 5,
+  imageButton: {
+    backgroundColor: '#6C63FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     flex: 0.48,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
+    marginLeft: 8,
+  },
+  formSection: {
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
-    fontWeight: '600',
+    marginBottom: 8,
+    fontWeight: '500',
+    color: '#333',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 10,
+    borderColor: '#E5E5E5',
+    borderRadius: 10,
+    padding: 16,
     minHeight: 100,
-    marginBottom: 20,
+    backgroundColor: '#F9F9F9',
     textAlignVertical: 'top',
+    fontSize: 16,
+    color: '#333',
   },
   submitButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 15,
-    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 10,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: '#E0E0E0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
+  },
+  submitIcon: {
+    marginRight: 8,
   },
 });
