@@ -2,21 +2,24 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   TextInput,
-  Button,
   FlatList,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
   Image,
-  ScrollView,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  SafeAreaView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { config } from './config';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Aichat = () => {
   const [message, setMessage] = useState('');
@@ -118,95 +121,147 @@ const Aichat = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View style={[styles.messageContainer, item.type === 'user' ? styles.user : styles.assistant]}>
-      <Text>{item.text}</Text>
+    <View
+      style={[
+        styles.messageContainer,
+        item.type === 'user' ? styles.user : styles.assistant,
+      ]}
+    >
+      <Text style={styles.messageText}>{item.text}</Text>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={chatMessages}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={styles.chatContainer}
-      />
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.container}>
+          <Text style={styles.headerText}>🧠 AI Assistant</Text>
 
-      {selectedImage && (
-        <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
-      )}
+          <FlatList
+            data={chatMessages}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => index.toString()}
+            contentContainerStyle={styles.chatContainer}
+          />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Type your message"
-        value={message}
-        onChangeText={setMessage}
-      />
+          {selectedImage && (
+            <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
+          )}
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Text style={styles.buttonText}>Select Image</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={takePhoto}>
-          <Text style={styles.buttonText}>Take Photo</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type your message..."
+              value={message}
+              onChangeText={setMessage}
+            />
+            <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
+              <Icon name="image" size={24} color="#007BFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={takePhoto} style={styles.iconButton}>
+              <Icon name="photo-camera" size={24} color="#007BFF" />
+            </TouchableOpacity>
+          </View>
 
-      <TouchableOpacity style={styles.sendButton} onPress={sendMessage} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.sendButtonText}>Send</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity
+            style={styles.sendButton}
+            onPress={sendMessage}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={styles.sendContent}>
+                <Icon name="send" size={18} color="#fff" style={{ marginRight: 5 }} />
+                <Text style={styles.sendButtonText}>Send</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10, backgroundColor: '#fff' },
-  chatContainer: { paddingBottom: 80 },
-  messageContainer: {
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    maxWidth: '80%',
+  container: { flex: 1, padding: 12, backgroundColor: '#F8F9FA' },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    paddingBottom: 10,
+    textAlign: 'center',
+    color: '#343a40',
   },
-  user: { alignSelf: 'flex-end', backgroundColor: '#DCF8C6' },
-  assistant: { alignSelf: 'flex-start', backgroundColor: '#EEE' },
-  input: {
+  chatContainer: {
+    paddingBottom: 100, // Ensure the bottom area has enough space for the input bar and button
+  },
+  messageContainer: {
+    padding: 12,
+    marginVertical: 6,
+    borderRadius: 15,
+    maxWidth: '80%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  messageText: {
+    fontSize: 15,
+    color: '#212529',
+  },
+  user: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#d1fcd3',
+  },
+  assistant: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e4e6eb',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
+    borderColor: '#ced4da',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     marginVertical: 10,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+  input: {
+    flex: 1,
+    fontSize: 16,
   },
-  button: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 5,
-    flex: 0.48,
-    alignItems: 'center',
+  iconButton: {
+    marginLeft: 10,
   },
-  buttonText: { color: '#fff' },
   sendButton: {
     backgroundColor: '#28a745',
-    padding: 15,
-    borderRadius: 5,
+    paddingVertical: 14,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    flexDirection: 'row',
+  },
+  sendContent: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  sendButtonText: { color: '#fff', fontWeight: 'bold' },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   previewImage: {
     width: 100,
     height: 100,
     marginVertical: 10,
     alignSelf: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
   },
 });
 
