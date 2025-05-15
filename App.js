@@ -168,7 +168,7 @@ function RepairerTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          headerShown: false, 
+          headerShown: false, // Hide the header
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

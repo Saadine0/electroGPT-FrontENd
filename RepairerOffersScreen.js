@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+  Animated,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios'; 
+import axios from 'axios';
 import { config } from './config';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RepairerOffersScreen({ navigation }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [repairId, setRepairId] = useState(null);
 
-  // Get the logged-in repairer's UID
   useEffect(() => {
     const fetchRepairerId = async () => {
       try {
         const uid = await AsyncStorage.getItem('uid');
         if (uid) {
           setRepairId(uid);
-          fetchOffers(uid); // Fetch offers when repairer UID is retrieved
+          fetchOffers(uid);
         } else {
           Alert.alert('Error', 'Repairer not logged in!');
           navigation.navigate('Login');
@@ -29,12 +38,10 @@ export default function RepairerOffersScreen({ navigation }) {
     fetchRepairerId();
   }, []);
 
-  // Fetch the offers from the backend filtered by repairId
   const fetchOffers = async (repairId) => {
     setLoading(true);
     try {
-        const response = await axios.get(`${config.BASE_URL}/api/content/offers/${repairId}`);
-
+      const response = await axios.get(`${config.BASE_URL}/api/content/offers/${repairId}`);
       if (response.status === 200) {
         setOffers(response.data.data);
       }
@@ -47,17 +54,16 @@ export default function RepairerOffersScreen({ navigation }) {
   };
 
   const handleOfferResponse = async (offerId, response) => {
-    // Accept or Reject an offer based on the response
     try {
       const result = await axios.post(`${config.BASE_URL}/api/offers/respond`, {
         offerId,
         repairId,
-        response, // 'accept' or 'reject'
+        response,
       });
 
       if (result.status === 200) {
         Alert.alert('Success', `Offer ${response}ed successfully!`);
-        fetchOffers(repairId); // Refresh the list of offers after responding
+        fetchOffers(repairId);
       }
     } catch (error) {
       console.error('Error responding to offer:', error);
@@ -67,7 +73,11 @@ export default function RepairerOffersScreen({ navigation }) {
 
   const renderOffer = ({ item }) => (
     <View style={styles.offerCard}>
-      <Text style={styles.offerTitle}>Description: {item.description}</Text>
+      <View style={styles.cardHeader}>
+        <Ionicons name="construct-outline" size={24} color="#3A5A40" />
+        <Text style={styles.offerTitle}>{item.description}</Text>
+      </View>
+
       <Text style={styles.offerDetails}>Client ID: {item.userId}</Text>
 
       <View style={styles.buttonRow}>
@@ -91,21 +101,23 @@ export default function RepairerOffersScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#6C63FF" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Repairer Offers</Text>
+      <Text style={styles.title}>Incoming Offers</Text>
       {offers.length === 0 ? (
-        <Text>No offers available at the moment.</Text>
+        <Text style={styles.emptyText}>No offers available at the moment.</Text>
       ) : (
         <FlatList
           data={offers}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderOffer}
+          contentContainerStyle={{ paddingBottom: 16 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </View>
@@ -115,8 +127,8 @@ export default function RepairerOffersScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F2F5F9',
     padding: 20,
-    backgroundColor: '#fff',
   },
   centered: {
     flex: 1,
@@ -124,46 +136,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#2D2D2D',
     marginBottom: 20,
     textAlign: 'center',
   },
+  emptyText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 40,
+  },
   offerCard: {
-    backgroundColor: '#f8f8f8',
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 8,
-    elevation: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
   },
   offerTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1E1E1E',
+    flex: 1,
   },
   offerDetails: {
     fontSize: 14,
-    color: '#555',
-    marginVertical: 5,
+    color: '#667085',
+    marginTop: 4,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: 16,
+    gap: 10,
   },
   acceptButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+    flex: 1,
+    backgroundColor: '#6C63FF',
+    paddingVertical: 12,
+    borderRadius: 16,
+    alignItems: 'center',
   },
   rejectButton: {
-    backgroundColor: '#dc3545',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+    flex: 1,
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 12,
+    borderRadius: 16,
+    alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
