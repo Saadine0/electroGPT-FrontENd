@@ -27,6 +27,7 @@ const Aichat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [inputFocused, setInputFocused] = useState(false); // 👈 New state
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -136,7 +137,10 @@ const Aichat = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={() => {
+        Keyboard.dismiss();
+        setInputFocused(false); // 👈 Hide send button on outside tap
+      }}>
         <SafeAreaView style={styles.container}>
           <Text style={styles.headerText}>🧠 AI Assistant</Text>
 
@@ -157,6 +161,7 @@ const Aichat = () => {
               placeholder="Type your message..."
               value={message}
               onChangeText={setMessage}
+              onFocus={() => setInputFocused(true)} // 👈 Show send button on focus
             />
             <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
               <Icon name="image" size={24} color="#007BFF" />
@@ -166,20 +171,22 @@ const Aichat = () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={styles.sendButton}
-            onPress={sendMessage}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.sendContent}>
-                <Icon name="send" size={18} color="#fff" style={{ marginRight: 5 }} />
-                <Text style={styles.sendButtonText}>Send</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {inputFocused && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={sendMessage}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={styles.sendContent}>
+                  <Icon name="send" size={18} color="#fff" style={{ marginRight: 5 }} />
+                  <Text style={styles.sendButtonText}>Send</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </SafeAreaView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -187,16 +194,23 @@ const Aichat = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12, backgroundColor: '#F8F9FA' },
+  container: { 
+    flex: 1, 
+    padding: 16, // Increased container padding
+    backgroundColor: '#F8F9FA',
+    paddingBottom: Platform.OS === 'ios' ? 25 : 16
+  },
   headerText: {
     fontSize: 20,
     fontWeight: 'bold',
-    paddingBottom: 10,
+    paddingVertical: 20, // Increased vertical padding
+    paddingHorizontal: 15, // Increased horizontal padding
     textAlign: 'center',
     color: '#343a40',
+    marginTop: Platform.OS === 'ios' ? 15 : 0,
   },
   chatContainer: {
-    paddingBottom: 100, // Ensure the bottom area has enough space for the input bar and button
+    paddingBottom: 120, // Increased bottom padding to prevent content from being hidden
   },
   messageContainer: {
     padding: 12,
@@ -227,9 +241,15 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     borderColor: '#ced4da',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginVertical: 10,
+    paddingHorizontal: 20, // Increased horizontal padding
+    paddingVertical: 15, // Increased vertical padding
+    marginVertical: 15, // Increased vertical margin
+    position: 'absolute',
+    top: '50%',
+    left: 16, // Adjusted to match container padding
+    right: 16,
+    transform: [{ translateY: -55 }], // Moved up more
+    zIndex: 1,
   },
   input: {
     flex: 1,
@@ -240,12 +260,19 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     backgroundColor: '#28a745',
-    paddingVertical: 14,
+    paddingVertical: 16, // Increased vertical padding
+    paddingHorizontal: 25, // Increased horizontal padding
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
     flexDirection: 'row',
+    position: 'absolute',
+    top: '50%',
+    left: 16, // Adjusted to match container padding
+    right: 16,
+    transform: [{ translateY: 25 }], // Adjusted position
+    zIndex: 1,
+    marginTop: 30, // Increased margin top
   },
   sendContent: {
     flexDirection: 'row',
