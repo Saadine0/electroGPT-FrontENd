@@ -11,8 +11,6 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
   SafeAreaView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,7 +25,6 @@ const Aichat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [inputFocused, setInputFocused] = useState(false); // 👈 New state
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -80,7 +77,12 @@ const Aichat = () => {
       return;
     }
 
-    const userMessage = { type: 'user', text: message || '[Image]' };
+    // Create user message with both text and image
+    const userMessage = { 
+      type: 'user', 
+      text: message || '', 
+      image: selectedImage ? selectedImage.uri : null 
+    };
     setChatMessages((prev) => [...prev, userMessage]);
     setMessage('');
     setLoading(true);
@@ -128,167 +130,229 @@ const Aichat = () => {
         item.type === 'user' ? styles.user : styles.assistant,
       ]}
     >
-      <Text style={styles.messageText}>{item.text}</Text>
+      {item.image && (
+        <Image 
+          source={{ uri: item.image }} 
+          style={styles.messageImage} 
+          resizeMode="cover"
+        />
+      )}
+      {item.text && <Text style={styles.messageText}>{item.text}</Text>}
     </View>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <TouchableWithoutFeedback onPress={() => {
-        Keyboard.dismiss();
-        setInputFocused(false); // 👈 Hide send button on outside tap
-      }}>
-        <SafeAreaView style={styles.container}>
-          <Text style={styles.headerText}>🧠 AI Assistant</Text>
-
+    <SafeAreaView style={styles.container}>
+      <View style={styles.safeArea}>
+        <Text style={styles.headerText}>🧠 AI Assistant</Text>
+        
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
           <FlatList
             data={chatMessages}
             renderItem={renderItem}
             keyExtractor={(item, index) => index.toString()}
             contentContainerStyle={styles.chatContainer}
+            style={styles.chatList}
+            showsVerticalScrollIndicator={false}
           />
 
           {selectedImage && (
-            <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
+            <View style={styles.imagePreviewContainer}>
+              <TouchableOpacity 
+                style={styles.removeImageButton}
+                onPress={() => setSelectedImage(null)}
+              >
+                <Icon name="close" size={16} color="#fff" />
+              </TouchableOpacity>
+              <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} />
+            </View>
           )}
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type your message..."
-              value={message}
-              onChangeText={setMessage}
-              onFocus={() => setInputFocused(true)} // 👈 Show send button on focus
-            />
-            <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
-              <Icon name="image" size={24} color="#007BFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={takePhoto} style={styles.iconButton}>
-              <Icon name="photo-camera" size={24} color="#007BFF" />
-            </TouchableOpacity>
+          <View style={styles.inputSection}>
+            <View style={styles.inputRow}>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type your message..."
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  maxLength={1000}
+                  placeholderTextColor="#9CA3AF"
+                />
+                <TouchableOpacity onPress={pickImage} style={styles.iconButton}>
+                  <Icon name="image" size={22} color="#007BFF" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={takePhoto} style={styles.iconButton}>
+                  <Icon name="photo-camera" size={22} color="#007BFF" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.sendButton, 
+                  (!message.trim() && !selectedImage) && styles.sendButtonDisabled
+                ]}
+                onPress={sendMessage}
+                disabled={loading || (!message.trim() && !selectedImage)}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Icon name="send" size={18} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-
-          {inputFocused && (
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={sendMessage}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.sendContent}>
-                  <Icon name="send" size={18} color="#fff" style={{ marginRight: 5 }} />
-                  <Text style={styles.sendButtonText}>Send</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
-        </SafeAreaView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 16, // Increased container padding
     backgroundColor: '#F8F9FA',
-    paddingBottom: Platform.OS === 'ios' ? 25 : 16
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  keyboardView: {
+    flex: 1,
   },
   headerText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    paddingVertical: 20, // Increased vertical padding
-    paddingHorizontal: 15, // Increased horizontal padding
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 10 : 15,
     textAlign: 'center',
     color: '#343a40',
-    marginTop: Platform.OS === 'ios' ? 15 : 0,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+  },
+  chatList: {
+    flex: 1,
   },
   chatContainer: {
-    paddingBottom: 120, // Increased bottom padding to prevent content from being hidden
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingBottom: 20,
   },
-  messageContainer: {
-    padding: 12,
-    marginVertical: 6,
-    borderRadius: 15,
-    maxWidth: '80%',
+  imagePreviewContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 12,
+    right: '37%',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  previewImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+  },
+  inputSection: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    marginBottom: 65, // Account for tab bar height
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ced4da',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minHeight: 40,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    maxHeight: 80,
+    paddingVertical: 6,
+    color: '#212529',
+    textAlignVertical: 'center',
+  },
+  iconButton: {
+    marginLeft: 6,
+    padding: 6,
+  },
+  sendButton: {
+    backgroundColor: '#28a745',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
+  sendButtonDisabled: {
+    backgroundColor: '#6c757d',
+  },
+  messageContainer: {
+    padding: 12,
+    marginVertical: 4,
+    borderRadius: 16,
+    maxWidth: '80%',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   messageText: {
     fontSize: 15,
     color: '#212529',
+    lineHeight: 20,
   },
   user: {
     alignSelf: 'flex-end',
     backgroundColor: '#d1fcd3',
+    borderBottomRightRadius: 4,
   },
   assistant: {
     alignSelf: 'flex-start',
     backgroundColor: '#e4e6eb',
+    borderBottomLeftRadius: 4,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#ced4da',
-    paddingHorizontal: 20, // Increased horizontal padding
-    paddingVertical: 15, // Increased vertical padding
-    marginVertical: 15, // Increased vertical margin
-    position: 'absolute',
-    top: '50%',
-    left: 16, // Adjusted to match container padding
-    right: 16,
-    transform: [{ translateY: -55 }], // Moved up more
-    zIndex: 1,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-  },
-  iconButton: {
-    marginLeft: 10,
-  },
-  sendButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 16, // Increased vertical padding
-    paddingHorizontal: 25, // Increased horizontal padding
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    position: 'absolute',
-    top: '50%',
-    left: 16, // Adjusted to match container padding
-    right: 16,
-    transform: [{ translateY: 25 }], // Adjusted position
-    zIndex: 1,
-    marginTop: 30, // Increased margin top
-  },
-  sendContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-    marginVertical: 10,
-    alignSelf: 'center',
+  messageImage: {
+    width: 200,
+    height: 200,
     borderRadius: 12,
+    marginBottom: 8,
   },
 });
 
